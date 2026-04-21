@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Golden Circus</title>
+  <style>
+    body { margin:0; overflow:hidden; }
+    #ui {
+      position:absolute;
+      top:10px;
+      left:10px;
+      color:white;
+      font-family:Arial;
+      background: rgba(0,0,0,0.4);
+      padding:8px;
+      border-radius:8px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="ui">WASD — движение | V — камера | E — эффект</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.158/build/three.min.js"></script>
+
+<script>
+let scene = new THREE.Scene();
+
+// 🌅 НЕБО (skybox цвет)
+scene.background = new THREE.Color(0xffd9a6);
+
+// 🌫️ ТУМАН (атмосфера)
+scene.fog = new THREE.Fog(0xffd9a6, 10, 60);
+
+// Камера
+let camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
+let renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+// ☀️ СОЛНЦЕ (золотой свет)
+let sun = new THREE.DirectionalLight(0xffcc88, 1.2);
+sun.position.set(10,20,10);
+sun.castShadow = true;
+scene.add(sun);
+
+// 💡 мягкий свет
+let ambient = new THREE.AmbientLight(0xffe6cc, 0.6);
+scene.add(ambient);
+
+// 🌍 земля
+let ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(200,200),
+  new THREE.MeshStandardMaterial({ color: 0x66cc66 })
+);
+ground.rotation.x = -Math.PI/2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// 🎪 шатёр (красиво)
+let tent = new THREE.Mesh(
+  new THREE.ConeGeometry(6,8,32),
+  new THREE.MeshStandardMaterial({ color: 0xff4444, metalness:0.3, roughness:0.5 })
+);
+tent.position.set(0,4,-15);
+tent.castShadow = true;
+scene.add(tent);
+
+// 🎭 ПЕРСОНАЖ (похож на Помни)
+let head = new THREE.Mesh(
+  new THREE.SphereGeometry(0.7,32,32),
+  new THREE.MeshStandardMaterial({ color: 0xffe0cc })
+);
+head.position.y = 2;
+
+let body = new THREE.Mesh(
+  new THREE.BoxGeometry(1,1.5,1),
+  new THREE.MeshStandardMaterial({ color: 0x3366ff })
+);
+body.position.y = 1;
+
+let player = new THREE.Group();
+player.add(head);
+player.add(body);
+scene.add(player);
+
+// 😈 враг
+let enemy = new THREE.Mesh(
+  new THREE.BoxGeometry(1,2,1),
+  new THREE.MeshStandardMaterial({ color: 0x111111 })
+);
+enemy.position.set(8,1,8);
+scene.add(enemy);
+
+// 🌳 деревья
+for (let i = 0; i < 20; i++) {
+  let tree = new THREE.Mesh(
+    new THREE.ConeGeometry(1.2,3,8),
+    new THREE.MeshStandardMaterial({ color: 0x228822 })
+  );
+  tree.position.set(Math.random()*80-40,1.5,Math.random()*80-40);
+  scene.add(tree);
+}
+
+// камера режим
+let firstPerson = true;
+
+// управление
+let keys = {};
+document.addEventListener("keydown", e => {
+  keys[e.key.toLowerCase()] = true;
+
+  if (e.key === "v") firstPerson = !firstPerson;
+  if (e.key === "e") triggerEffect();
+});
+
+document.addEventListener("keyup", e => {
+  keys[e.key.toLowerCase()] = false;
+});
+
+// 🎵 музыка
+let music = new Audio("music.mp3");
+music.loop = true;
+music.volume = 0.4;
+document.addEventListener("click", ()=> music.play());
+
+// эффект
+function triggerEffect() {
+  sun.color.setHex(Math.random() * 0xffffff);
+}
+
+// 🚀 движение (быстрее)
+function movePlayer() {
+  let speed = 0.2;
+
+  if (keys["w"]) player.position.z -= speed;
+  if (keys["s"]) player.position.z += speed;
+  if (keys["a"]) player.position.x -= speed;
+  if (keys["d"]) player.position.x += speed;
+}
+
+// 😈 погоня
+function updateEnemy() {
+  let dir = player.position.clone().sub(enemy.position).normalize();
+  enemy.position.add(dir.multiplyScalar(0.04));
+}
+
+// 🎥 камера
+function updateCamera() {
+  if (firstPerson) {
+    camera.position.set(player.position.x, player.position.y + 2, player.position.z);
+  } else {
+    camera.position.set(player.position.x + 5, player.position.y + 4, player.position.z + 5);
+    camera.lookAt(player.position);
+  }
+}
+
+// 🌬️ дыхание
+let breath = 0;
+function breathEffect() {
+  breath += 0.04;
+  camera.fov = 75 + Math.sin(breath) * 3;
+  camera.updateProjectionMatrix();
+}
+
+// анимация
+function animate() {
+  requestAnimationFrame(animate);
+
+  movePlayer();
+  updateEnemy();
+  updateCamera();
+  breathEffect();
+
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+
+</body>
+</html>
